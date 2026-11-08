@@ -1,0 +1,68 @@
+name: release
+
+# Реліз: тести → архів із бінарниками amd64/arm64 → атестація → GitHub Release.
+# Запуск: тег vX.Y.Z (git push --tags) або вручну — Actions → release → Run workflow → версія.
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Версія без «v», напр. 1.0.0 (з поточного коміту main буде створено тег vX.Y.Z)'
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    env:
+      # Версія лише через змінну середовища (не підставляється в скрипт напряму) і перевіряється.
+      VERSION_IN: ${{ inputs.version || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Версія
+        run: |
+          V="${VERSION_IN#v}"
+          [[ $V =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Некоректна версія: $V"; exit 1; }
+          grep -q "^## $V" CHANGELOG.md || { echo "У CHANGELOG.md немає розділу ## $V"; exit 1; }
+          if [[ $GITHUB_EVENT_NAME == workflow_dispatch ]] && gh release view "v$V" >/dev/null 2>&1; then
+            echo "Реліз v$V уже існує"; exit 1
+          fi
+          echo "V=$V" >> "$GITHUB_ENV"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable   # найновіший випуск Go з усіма виправленнями безпеки
+          check-latest: true
+      - name: Тести
+        run: |
+          go mod verify
+          go vet ./...
+          go build -o /tmp/alertd .
+          ALERTD_BIN=/tmp/alertd go test -count=1 ./...
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: Збірка
+        run: scripts/package.sh "$V"
+      - name: Атестація походження (бінарники зібрані саме цим репозиторієм)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/alertd-*.tar.gz
+            dist/alertd/alertd-linux-*
+      - name: Реліз
+        run: |
+          awk -v v="$V" '$0 ~ "^## "v {f=1; next} /^## / && f {exit} f' CHANGELOG.md > /tmp/notes.md
+          gh release create "v$V" "dist/alertd-$V.tar.gz" dist/SHA256SUMS \
+            --target "$GITHUB_SHA" --title "ukrainealarm-alertd $V" --notes-file /tmp/notes.md

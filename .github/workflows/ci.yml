@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable   # найновіший випуск Go з усіма виправленнями безпеки
+          check-latest: true
+      - name: Перевірка модулів
+        run: go mod verify
+      - name: vet
+        run: go vet ./...
+      - name: Модульні й наскрізні тести
+        run: |
+          go build -o /tmp/alertd .
+          ALERTD_BIN=/tmp/alertd go test -count=1 ./...
+      - name: Перевірка на гонки
+        run: |
+          go build -race -o /tmp/alertd-race .
+          ALERTD_BIN=/tmp/alertd-race BURST=500 go test -race -count=1 ./...
+      - name: Фазинг (короткий)
+        run: go test -run '^$' -fuzz FuzzWebhookBody -fuzztime 30s .
+      - name: Відомі вразливості (govulncheck)
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: Ізоляція systemd (оцінка не гірша за 2.0)
+        run: |
+          systemd-analyze security --offline=yes --threshold=20 deploy/alertd.service | tail -1

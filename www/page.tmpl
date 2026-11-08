@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+{{- if .Refresh}}
+<noscript><meta http-equiv="refresh" content="60"></noscript>
+{{- end}}
+<title>{{if .Site}}{{.Site}}{{else}}{{.Title}}{{end}}</title>
+<style>
+  :root { --bg: #f6f5f1; --fg: #1d1d1b; --muted: #8a877f; --ok: #3fae6b; --warn: #c9a227; --bad: #d0533f; --off: #c9c6bd; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111210; --fg: #e9e7e1; --muted: #6f6c66; --ok: #4cc47c; --warn: #e0b84a; --bad: #e56a55; --off: #3a3936; }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font: 16px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    display: grid; place-items: center; padding: 24px;
+  }
+  main { max-width: 34rem; }
+  .status { display: flex; align-items: center; gap: .6rem; color: var(--muted); font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; }
+  .dot { width: .55rem; height: .55rem; border-radius: 50%; flex: none; }
+  .ok { background: var(--ok); } .warn { background: var(--warn); } .bad { background: var(--bad); } .off { background: var(--off); }
+  .pulse { animation: pulse 2.4s ease-out infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 .7rem transparent; } }
+  @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+  .pair { display: inline-flex; gap: .25rem; margin-left: .2rem; }
+  .pair .dot { width: .3rem; height: .3rem; }
+  h1 { font-size: clamp(2.2rem, 8vw, 3.4rem); font-weight: 600; letter-spacing: -.02em; margin: 1.2rem 0 .6rem; }
+  p { color: var(--muted); }
+</style>
+</head>
+<body>
+<main data-code="{{.Code}}">
+  <div class="status"><span id="d0" class="dot {{.Dot}}{{if .Pulse}} pulse{{end}}"></span><span id="l0">{{.Label}}</span>
+  {{- if .Pair}}<span class="pair" aria-hidden="true">{{range $i, $c := .Pair}}<span id="d{{inc $i}}" class="dot {{$c}}"></span>{{end}}</span>{{end}}</div>
+  <h1>{{.Title}}</h1>
+  <p>{{.Text}}</p>
+</main>
+{{- if .Script}}
+<script>{{.Script}}</script>
+{{- end}}
+</body>
+</html>

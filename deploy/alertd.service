@@ -1,0 +1,59 @@
+[Unit]
+Description=alertd — збирач повітряних тривог (ukrainealarm webhook → SQLite)
+After=network-online.target
+Wants=network-online.target
+# Ніколи не «здаватися»: без цього systemd припиняє перезапуски після 5 падінь за 10 с.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=alertd
+Group=alertd
+EnvironmentFile=/etc/alertd/alertd.env
+# Go тримає купу в межах, щоб не впертися в MemoryMax нижче
+Environment=GOMEMLIMIT=160MiB
+ExecStart=/usr/local/bin/alertd run
+Restart=always
+RestartSec=2
+StateDirectory=alertd
+StateDirectoryMode=0750
+UMask=0027
+TimeoutStopSec=10
+
+# Пріоритет: тривоги важливіші за все інше на сервері
+Nice=-5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=0
+
+# Ізоляція
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+PrivateUsers=yes
+ProcSubset=pid
+RemoveIPC=yes
+KeyringMode=private
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+# Жодної пам'яті, що одночасно записувана й виконувана: впроваджений код не запуститься.
+MemoryDenyWriteExecute=yes
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

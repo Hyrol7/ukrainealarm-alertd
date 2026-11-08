@@ -1,0 +1,10 @@
+/dist/
+/alertd
+*.db
+*.db-wal
+*.db-shm
+*.env
+!deploy/alertd.env.example
+go.work
+go.work.sum
+testdata/fuzz/
