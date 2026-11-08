@@ -6,7 +6,11 @@ Wants=network-online.target
 StartLimitIntervalSec=0
 
 [Service]
-Type=simple
+# notify: systemd чекає READY=1, а WATCHDOG=1 має надходити частіше за WatchdogSec —
+# інакше завислу (а не лише впалу) службу буде перезапущено.
+Type=notify
+NotifyAccess=main
+WatchdogSec=30
 User=alertd
 Group=alertd
 EnvironmentFile=/etc/alertd/alertd.env

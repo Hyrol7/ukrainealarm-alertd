@@ -119,7 +119,8 @@ journalctl -u alertd -f
 event #1 webhook 32 AIR ACTIVATE/Red → start [ → Red]
 ```
 
-Готово. alertd запускається разом із сервером і перезапускається сам у разі збою.
+Готово. alertd запускається разом із сервером і перезапускається сам у разі збою — і коли
+впав, і коли завис (сторожовий таймер systemd).
 Як підключити роздавальник — [api.md](api.md) і
 [ukrainealarm-alertcast](https://github.com/Hyrol7/ukrainealarm-alertcast).
 Подальший супровід — [maintenance.md](maintenance.md).

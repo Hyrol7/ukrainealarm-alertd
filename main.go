@@ -481,9 +481,22 @@ func run(cfg Config) error {
 
 	// Webhook приймаються одразу; паралельно — дерево регіонів і початкова звірка.
 	go srv.syncLoop(ctx, up)
+	sdNotify("READY=1")
+	go runWatchdog(ctx, watchdogInterval(), func(c context.Context) bool {
+		// живий, якщо стан і БД не заблоковані, а HTTP-сервер відповідає
+		state.Snapshot()
+		req, _ := http.NewRequestWithContext(c, "GET", "http://"+cfg.LocalListen+"/health", nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return false
+		}
+		resp.Body.Close()
+		return true
+	}, sdNotify)
 	go srv.maintenanceLoop(ctx, up)
 
 	<-ctx.Done()
+	sdNotify("STOPPING=1")
 	logf("shutting down")
 	sctx, c := context.WithTimeout(context.Background(), 5*time.Second)
 	defer c()
